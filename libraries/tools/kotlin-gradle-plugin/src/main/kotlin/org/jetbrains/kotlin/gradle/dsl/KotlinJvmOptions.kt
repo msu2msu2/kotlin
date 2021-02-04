@@ -5,12 +5,6 @@ package org.jetbrains.kotlin.gradle.dsl
 interface KotlinJvmOptions  : org.jetbrains.kotlin.gradle.dsl.KotlinCommonOptions {
 
     /**
-     * Include Kotlin runtime into the resulting JAR
-     * Default value: false
-     */
-     var includeRuntime: kotlin.Boolean
-
-    /**
      * Generate metadata for Java 1.8 reflection on method parameters
      * Default value: false
      */

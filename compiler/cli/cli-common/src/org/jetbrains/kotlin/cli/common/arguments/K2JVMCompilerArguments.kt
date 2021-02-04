@@ -25,7 +25,6 @@ class K2JVMCompilerArguments : CommonCompilerArguments() {
         description = "List of directories and JAR/ZIP archives to search for user class files")
     var classpath: String? by NullableStringFreezableVar(null)
 
-    @GradleOption(DefaultValues.BooleanFalseDefault::class)
     @Argument(value = "-include-runtime", description = "Include Kotlin runtime into the resulting JAR")
     var includeRuntime: Boolean by FreezableVar(false)
 

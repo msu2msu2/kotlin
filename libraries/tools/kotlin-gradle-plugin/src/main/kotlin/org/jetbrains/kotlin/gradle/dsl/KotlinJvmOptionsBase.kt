@@ -39,13 +39,6 @@ internal abstract class KotlinJvmOptionsBase : org.jetbrains.kotlin.gradle.dsl.K
             languageVersionField = value
         }
 
-    private var includeRuntimeField: kotlin.Boolean? = null
-    override var includeRuntime: kotlin.Boolean
-        get() = includeRuntimeField ?: false
-        set(value) {
-            includeRuntimeField = value
-        }
-
     private var javaParametersField: kotlin.Boolean? = null
     override var javaParameters: kotlin.Boolean
         get() = javaParametersField ?: false
@@ -115,7 +108,6 @@ internal abstract class KotlinJvmOptionsBase : org.jetbrains.kotlin.gradle.dsl.K
         verboseField?.let { args.verbose = it }
         apiVersionField?.let { args.apiVersion = it }
         languageVersionField?.let { args.languageVersion = it }
-        includeRuntimeField?.let { args.includeRuntime = it }
         javaParametersField?.let { args.javaParameters = it }
         jdkHomeField?.let { args.jdkHome = it }
         jvmTargetField?.let { args.jvmTarget = it }
@@ -134,7 +126,6 @@ internal fun org.jetbrains.kotlin.cli.common.arguments.K2JVMCompilerArguments.fi
     verbose = false
     apiVersion = null
     languageVersion = null
-    includeRuntime = false
     javaParameters = false
     jdkHome = null
     jvmTarget = "1.8"
