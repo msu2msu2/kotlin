@@ -47,7 +47,9 @@ object IdeSealedClassInheritorsProvider : SealedClassInheritorsProvider() {
 
             val containingPackage = sealedClass.containingPackage() ?: return emptyList()
             val psiPackage = KotlinJavaPsiFacade.getInstance(sealedKtClass.project)
-                .findPackage(containingPackage.asString(), GlobalSearchScope.moduleScope(module)) ?: return emptyList()
+                .findPackage(containingPackage.asString(), GlobalSearchScope.moduleScope(module))
+                ?: getPackageViaDirectoryService(sealedKtClass)
+                ?: return emptyList()
             val packageScope = PackageScope(psiPackage, false, false)
 
             mppAwareSearchScope.intersectWith(packageScope)
@@ -69,5 +71,10 @@ object IdeSealedClassInheritorsProvider : SealedClassInheritorsProvider() {
 
     private fun ModuleDescriptor.listCommonModulesIfAny(): MutableList<ModuleDescriptor> {
         return implementedDescriptors.closure { it.implementedDescriptors }.toMutableList()
+    }
+
+    private fun getPackageViaDirectoryService(ktClass: KtClass): PsiPackage? {
+        val directory = ktClass.containingFile.containingDirectory ?: return null
+        return JavaDirectoryService.getInstance().getPackage(directory)
     }
 }
