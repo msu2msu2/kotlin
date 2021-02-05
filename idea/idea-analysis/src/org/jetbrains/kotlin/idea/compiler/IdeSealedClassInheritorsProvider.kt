@@ -39,7 +39,7 @@ object IdeSealedClassInheritorsProvider : SealedClassInheritorsProvider() {
             val module = sealedKtClass.module ?: return emptyList()
             val moduleManager = ModuleManager.getInstance(sealedKtClass.project)
 
-            val mppAwareSearchScope = sealedClass.module.listCommonModulesIfAny()
+            val mppAwareSearchScope = sealedClass.module.listCommonModulesIfAny().toMutableList()
                 .apply { add(sealedClass.module) }
                 .mapNotNull { moduleManager.findModuleByName(JvmCodegenUtil.getModuleName(it)) }
                 .map { it.moduleScope }
@@ -69,8 +69,8 @@ object IdeSealedClassInheritorsProvider : SealedClassInheritorsProvider() {
             .sortedBy(ClassDescriptor::getName) // order needs to be stable (at least for tests)
     }
 
-    private fun ModuleDescriptor.listCommonModulesIfAny(): MutableList<ModuleDescriptor> {
-        return implementedDescriptors.closure { it.implementedDescriptors }.toMutableList()
+    private fun ModuleDescriptor.listCommonModulesIfAny(): Collection<ModuleDescriptor> {
+        return implementedDescriptors.closure { it.implementedDescriptors }
     }
 
     private fun getPackageViaDirectoryService(ktClass: KtClass): PsiPackage? {
