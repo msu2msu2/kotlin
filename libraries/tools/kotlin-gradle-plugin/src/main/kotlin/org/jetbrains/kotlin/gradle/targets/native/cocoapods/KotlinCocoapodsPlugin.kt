@@ -6,6 +6,7 @@
 @file:Suppress("PackageDirectoryMismatch") // Old package for compatibility
 package org.jetbrains.kotlin.gradle.plugin.cocoapods
 
+import org.gradle.api.NamedDomainObjectSet
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 import org.gradle.api.provider.Provider
@@ -363,6 +364,15 @@ open class KotlinCocoapodsPlugin : Plugin<Project> {
         }
     }
 
+    private fun CocoapodsExtension.podsForFamily(family: Family): NamedDomainObjectSet<CocoapodsDependency> =
+        when (family) {
+            Family.IOS -> ios.pods
+            Family.OSX -> osx.pods
+            Family.TVOS -> tvos.pods
+            Family.WATCHOS -> watchos.pods
+            else -> throw IllegalArgumentException("Cocoapods integration is not supported for ${family.name}.")
+        }
+
     private fun registerPodDownloadTask(
         project: Project,
         cocoapodsExtension: CocoapodsExtension
@@ -411,7 +421,7 @@ open class KotlinCocoapodsPlugin : Plugin<Project> {
                 it.useLibraries = project.provider { cocoapodsExtension.useLibraries }
                 it.specRepos = project.provider { cocoapodsExtension.specRepos }
                 it.family = family
-                it.pods.set(cocoapodsExtension.pods)
+                it.pods.set(cocoapodsExtension.podsForFamily(family))
                 it.dependsOn(downloadPods)
                 it.onlyIf { isAvailableToProduceSynthetic }
             }
@@ -423,24 +433,25 @@ open class KotlinCocoapodsPlugin : Plugin<Project> {
         kotlinExtension: KotlinMultiplatformExtension,
         cocoapodsExtension: CocoapodsExtension
     ) {
-        val schemeNames = mutableSetOf<String>()
 
-        cocoapodsExtension.pods.all { pod ->
+        val sdks = mutableSetOf<String>()
 
-            if (schemeNames.contains(pod.schemeName)) {
-                return@all
+        kotlinExtension.supportedTargets().all loop@{ target ->
+
+            val sdk = target.toValidSDK
+            if (!target.konanTarget.family.isAppleFamily || sdk in sdks) {
+                return@loop
             }
-            schemeNames.add(pod.schemeName)
+            sdks += sdk
 
-            val sdks = mutableSetOf<String>()
+            val schemeNames = mutableSetOf<String>()
 
-            kotlinExtension.supportedTargets().all loop@{ target ->
+            cocoapodsExtension.podsForFamily(target.konanTarget.family).all { pod ->
 
-                val sdk = target.toValidSDK
-                if (sdk in sdks) {
-                    return@loop
+                if (schemeNames.contains(pod.schemeName)) {
+                    return@all
                 }
-                sdks += sdk
+                schemeNames.add(pod.schemeName)
 
                 val podGenTaskProvider = project.tasks.named(target.konanTarget.family.toPodGenTaskName, PodGenTask::class.java)
                 project.tasks.register(sdk.toSetupBuildTaskName(pod), PodSetupBuildTask::class.java) {
@@ -462,25 +473,25 @@ open class KotlinCocoapodsPlugin : Plugin<Project> {
         kotlinExtension: KotlinMultiplatformExtension,
         cocoapodsExtension: CocoapodsExtension
     ) {
-        val schemeNames = mutableSetOf<String>()
+        val sdks = mutableSetOf<String>()
 
-        cocoapodsExtension.pods.all { pod ->
+        kotlinExtension.supportedTargets().all loop@{ target ->
 
-            if (schemeNames.contains(pod.schemeName)) {
-                return@all
+            val sdk = target.toValidSDK
+
+            if (!target.konanTarget.family.isAppleFamily || sdk in sdks) {
+                return@loop
             }
-            schemeNames.add(pod.schemeName)
+            sdks += sdk
 
-            val sdks = mutableSetOf<String>()
+            val schemeNames = mutableSetOf<String>()
 
-            kotlinExtension.supportedTargets().all loop@{ target ->
+            cocoapodsExtension.podsForFamily(target.konanTarget.family).all { pod ->
 
-                val sdk = target.toValidSDK
-
-                if (sdk in sdks) {
-                    return@loop
+                if (schemeNames.contains(pod.schemeName)) {
+                    return@all
                 }
-                sdks += sdk
+                schemeNames.add(pod.schemeName)
 
                 val podSetupBuildTaskProvider =
                     project.tasks.named(sdk.toSetupBuildTaskName(pod), PodSetupBuildTask::class.java)
