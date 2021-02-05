@@ -39,11 +39,11 @@ object IdeSealedClassInheritorsProvider : SealedClassInheritorsProvider() {
             val module = sealedKtClass.module ?: return emptyList()
             val moduleManager = ModuleManager.getInstance(sealedKtClass.project)
 
-            val mppAwareSearchScope = sealedClass.module.listCommonModulesIfAny().toMutableList()
+            val modulesScope = sealedClass.module.listCommonModulesIfAny().toMutableList()
                 .apply { add(sealedClass.module) }
-                .mapNotNull { moduleManager.findModuleByName(JvmCodegenUtil.getModuleName(it)) }
-                .map { it.moduleScope }
-                .reduce { accumulatedScope, curScope -> accumulatedScope.uniteWith(curScope) }
+                .mapNotNull { moduleManager.findModuleByName(JvmCodegenUtil.getModuleName(it))?.moduleScope }
+
+            val mppAwareSearchScope = GlobalSearchScope.union(modulesScope)
 
             val containingPackage = sealedClass.containingPackage() ?: return emptyList()
             val psiPackage = KotlinJavaPsiFacade.getInstance(sealedKtClass.project)
