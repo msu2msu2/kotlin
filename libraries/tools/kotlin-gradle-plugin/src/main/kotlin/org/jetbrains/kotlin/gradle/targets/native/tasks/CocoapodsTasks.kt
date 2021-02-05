@@ -7,6 +7,7 @@
 package org.jetbrains.kotlin.gradle.tasks
 
 import org.gradle.api.DefaultTask
+import org.gradle.api.NamedDomainObjectCollection
 import org.gradle.api.Project
 import org.gradle.api.plugins.ExtensionAware
 import org.gradle.api.provider.Provider
@@ -33,11 +34,10 @@ import java.io.File
 open class PodspecTask : DefaultTask() {
 
     @get:Input
-    internal val specName = project.name.asValidFrameworkName()
+    internal lateinit var specName: Provider<String>
 
     @get:OutputFile
-    internal val outputFileProvider: Provider<File>
-        get() = project.provider { project.file("$specName.podspec") }
+    internal lateinit var outputFileProvider: Provider<File>
 
     @get:Input
     internal lateinit var needPodspec: Provider<Boolean>
@@ -68,16 +68,8 @@ open class PodspecTask : DefaultTask() {
     internal lateinit var frameworkName: Provider<String>
 
     @get:Nested
-    internal lateinit var ios: Provider<PodspecPlatformSettings>
-
-    @get:Nested
-    internal lateinit var osx: Provider<PodspecPlatformSettings>
-
-    @get:Nested
-    internal lateinit var tvos: Provider<PodspecPlatformSettings>
-
-    @get:Nested
-    internal lateinit var watchos: Provider<PodspecPlatformSettings>
+    internal val platformSettings: NamedDomainObjectCollection<PodspecPlatformSettings> =
+        project.container(PodspecPlatformSettings::class.java)
 
     init {
         onlyIf { needPodspec.get() }
@@ -106,10 +98,12 @@ open class PodspecTask : DefaultTask() {
         val gradleCommand = "\$REPO_ROOT/${gradleWrapper!!.toRelativeString(project.projectDir)}"
         val syncTask = "${project.path}:$SYNC_TASK_NAME"
 
-        val deploymentTargets = run {
-            listOf(ios, osx, tvos, watchos).map { it.get() }.filter { it.deploymentTarget != null }.joinToString("\n") {
-                "|    spec.${it.name}.deployment_target = '${it.deploymentTarget}'"
+        val deploymentTargets = with(StringBuilder()) {
+            platformSettings.all {
+                if (it.deploymentTarget == null) return@all
+                append("|    spec.${it.name}.deployment_target = '${it.deploymentTarget}'\n")
             }
+            toString()
         }
 
         with(outputFileProvider.get()) {
@@ -190,8 +184,11 @@ open class PodspecTask : DefaultTask() {
             else project.multiplatformExtensionOrNull?.cocoapodsExtensionOrNull?.podfile != null
                     || (project.parent?.let { hasPodfileOwnOrParent(it) } ?: false)
 
-        internal fun retrieveSpecRepos(project: Project): SpecRepos? = project.multiplatformExtensionOrNull?.cocoapodsExtensionOrNull?.specRepos
-        internal fun retrievePods(project: Project): List<CocoapodsDependency>? = project.multiplatformExtensionOrNull?.cocoapodsExtensionOrNull?.podsAsTaskInput
+        internal fun retrieveSpecRepos(project: Project): SpecRepos? =
+            project.multiplatformExtensionOrNull?.cocoapodsExtensionOrNull?.specRepos
+
+        internal fun retrievePods(project: Project): List<CocoapodsDependency>? =
+            project.multiplatformExtensionOrNull?.cocoapodsExtensionOrNull?.podsAsTaskInput
     }
 }
 

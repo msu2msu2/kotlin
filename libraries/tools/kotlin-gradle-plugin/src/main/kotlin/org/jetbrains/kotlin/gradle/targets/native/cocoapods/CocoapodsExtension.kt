@@ -21,20 +21,14 @@ private fun String.asModuleName() = this
     .replace('-', '_') // Support pods with dashes in names (see https://github.com/JetBrains/kotlin-native/issues/2884).
 
 abstract class PodDependencyHolder(@Internal val project: Project) {
-    private val _pods = project.container(CocoapodsExtension.CocoapodsDependency::class.java)
+    abstract val pods: NamedDomainObjectSet<CocoapodsExtension.CocoapodsDependency>
 
     // For some reason Gradle doesn't consume the @Nested annotation on NamedDomainObjectContainer.
     @get:Nested
-    open val podsAsTaskInput: List<CocoapodsExtension.CocoapodsDependency>
-        get() = _pods.toList()
+    val podsAsTaskInput: List<CocoapodsExtension.CocoapodsDependency>
+        get() = pods.toList()
 
-    /**
-     * Returns a list of pod dependencies.
-     */
-    // Already taken into account as a task input in the [podsAsTaskInput] property.
-    @get:Internal
-    open val pods: NamedDomainObjectSet<CocoapodsExtension.CocoapodsDependency>
-        get() = _pods
+    abstract fun addToPods(dependency: CocoapodsExtension.CocoapodsDependency)
 
     /**
      * Add a CocoaPods dependency to the pod built from this project.
@@ -92,11 +86,6 @@ abstract class PodDependencyHolder(@Internal val project: Project) {
         ConfigureUtil.configure(configure, this)
     }
 
-    open fun addToPods(dependency: CocoapodsExtension.CocoapodsDependency) {
-        val name = dependency.name
-        check(pods.findByName(name) == null) { "Project already has a CocoaPods dependency with name $name" }
-        pods.add(dependency)
-    }
 }
 
 open class CocoapodsExtension(project: Project) : PodDependencyHolder(project) {
@@ -184,10 +173,18 @@ open class CocoapodsExtension(project: Project) : PodDependencyHolder(project) {
     @Input
     var frameworkName: String = project.name.asValidFrameworkName()
 
+    @get:Internal
+    override val pods: NamedDomainObjectSet<CocoapodsDependency>
+        get() = project.container(CocoapodsDependency::class.java).apply {
+            _platformSettings.values.forEach { platform ->
+                platform.pods.all {
+                    addLater(project.provider { it })
+                }
+            }
+        }
+
     override fun addToPods(dependency: CocoapodsDependency) {
         _platformSettings.values.forEach { it.addToPods(dependency) }
-        //TODO avoid collecting on root level
-        super.addToPods(dependency)
     }
 
     @get:Nested
@@ -302,6 +299,21 @@ open class CocoapodsExtension(project: Project) : PodDependencyHolder(project) {
         @get:Input
         var deploymentTarget: String? = null
 
+        private val _pods = project.container(CocoapodsDependency::class.java)
+
+        /**
+         * Returns a list of pod dependencies.
+         */
+        // Already taken into account as a task input in the [podsAsTaskInput] property.
+        @get:Internal
+        override val pods: NamedDomainObjectSet<CocoapodsDependency>
+            get() = _pods
+
+        override fun addToPods(dependency: CocoapodsDependency) {
+            val name = dependency.name
+            check(pods.findByName(name) == null) { "Project already has a CocoaPods dependency with name $name" }
+            pods.add(dependency)
+        }
 
         @Input
         override fun getName(): String = name
