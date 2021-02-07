@@ -1,4 +1,5 @@
 // DO_NOT_CHOOSE_NOTHING
+//IGNORE_FIR
 
 interface I {
     fun foo(): String?
